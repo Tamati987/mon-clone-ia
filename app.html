@@ -1,0 +1,573 @@
+<title>Mon Clone IA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout : un seul écran façon app — en-tête, fil qui défile, composeur et onglets en bas */
+:root{
+  --bg:#EDF3F2; --surface:#FFFFFF; --ink:#10201F; --muted:#56696A; --line:#D2DEDC;
+  --accent:#0A7670; --accent-ink:#FFFFFF; --accent-soft:#D9EEEB; --user-bg:#D3EAE6;
+  --code-bg:#E7EFEE; --danger:#B3242C;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B1313; --surface:#132020; --ink:#E4EEED; --muted:#8DA2A0; --line:#223332;
+  --accent:#3BC0B5; --accent-ink:#04211E; --accent-soft:#163533; --user-bg:#173E3B;
+  --code-bg:#0E1A1A; --danger:#FF8086; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0B1313; --surface:#132020; --ink:#E4EEED; --muted:#8DA2A0; --line:#223332;
+  --accent:#3BC0B5; --accent-ink:#04211E; --accent-soft:#163533; --user-bg:#173E3B;
+  --code-bg:#0E1A1A; --danger:#FF8086; color-scheme:dark }
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--f-body);overflow:hidden}
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;max-width:760px;margin:0 auto}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+header.top{display:flex;align-items:center;gap:10px;padding-block:12px 10px;border-bottom:1px solid var(--line)}
+.brand{flex:1;min-width:0}
+.brand h1{margin:0;font:800 1.3rem/1.1 var(--f-display);letter-spacing:-.015em;text-wrap:balance}
+.brand small{display:block;color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--surface);flex:none}
+.seg button{border:0;background:transparent;color:var(--muted);font:700 .78rem var(--f-body);padding:6px 10px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+main{overflow-y:auto;overscroll-behavior:contain;padding-block:16px 20px}
+section.view{display:flex;flex-direction:column;gap:18px}
+
+/* Fil de discussion */
+.thread{display:flex;flex-direction:column;gap:14px}
+.msg{max-width:88%;min-width:0;padding:10px 14px;border-radius:var(--r);overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--user-bg);border-bottom-right-radius:4px;white-space:pre-wrap}
+.msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.bot p{margin:0 0 .6em}.msg.bot>:last-child{margin-bottom:0}
+.msg h3,.msg h4{font:700 1.02rem/1.3 var(--f-display);margin:.7em 0 .3em}
+.msg ul,.msg ol{margin:.2em 0 .6em;padding-left:1.3em}
+.msg code{font:.86em var(--f-mono);background:var(--code-bg);padding:1px 4px;border-radius:4px}
+.msg pre{background:var(--code-bg);border-radius:8px;padding:10px 12px;overflow-x:auto;margin:.5em 0;font:.84rem/1.45 var(--f-mono)}
+.msg pre code{background:none;padding:0;font-size:inherit}
+.msg a{color:var(--accent)}
+.thinking{color:var(--muted);font-style:italic}
+.meta{display:flex;gap:12px;align-items:center;margin-top:6px;font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.linkbtn{border:0;background:none;color:var(--accent);font:700 .78rem var(--f-body);padding:4px 0;cursor:pointer}
+
+.hello{display:flex;flex-direction:column;gap:12px;padding-block:24px 8px}
+.hello h2{margin:0;font:800 clamp(1.7rem,7vw,2.3rem)/1.05 var(--f-display);letter-spacing:-.02em;text-wrap:balance}
+.hello p{margin:0;color:var(--muted);max-width:52ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 12px;font:15px/1.2 var(--f-body);cursor:pointer;text-align:left}
+
+/* Bas d'écran */
+footer.dock{border-top:1px solid var(--line);background:var(--bg);padding-block:8px 4px}
+.flash{margin:0 0 8px;padding:8px 12px;border-radius:10px;background:var(--accent-soft);font-size:.88rem}
+.flash.err{color:var(--danger)}
+.composer{display:flex;gap:8px;align-items:flex-end}
+textarea,input[type=text]{width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:10px 12px;font:16px/1.4 var(--f-body)}
+#msg{flex:1;resize:none;max-height:9.5em;border-radius:var(--r)}
+textarea:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:0;border-radius:12px;padding:11px 16px;font:700 .95rem var(--f-body);cursor:pointer;background:var(--accent);color:var(--accent-ink);flex:none}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:700 .84rem var(--f-body);padding:9px 4px;border-radius:10px;cursor:pointer}
+.tabs button[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+
+/* Mémoire et historique */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px}
+.card h2{margin:0;font:800 1.1rem/1.2 var(--f-display)}
+.card p.hint{margin:0;color:var(--muted);font-size:.88rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.list{display:flex;flex-direction:column}
+.item{display:flex;gap:10px;align-items:center;padding-block:10px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .grow{flex:1;min-width:0}
+.item .t{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .s{color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums}
+.item.open{cursor:pointer}
+.item.current .t{color:var(--accent)}
+.empty{color:var(--muted);font-size:.9rem;margin:0}
+.bar{height:6px;border-radius:99px;background:var(--code-bg);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.kw{font:600 .9em var(--f-mono);background:var(--code-bg);padding:1px 6px;border-radius:5px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;font-variant-numeric:tabular-nums}
+.stats div{display:flex;flex-direction:column}
+.stats b{font:800 1.2rem var(--f-display)}
+.stats span{color:var(--muted);font-size:.78rem}
+@media (prefers-reduced-motion:no-preference){.msg{animation:in .18s ease-out}@keyframes in{from{transform:translateY(4px);opacity:.6}}}
+</style>
+
+<div class="app">
+  <header class="top gut">
+    <div class="brand"><h1>Mon Clone IA</h1><small id="sub">Chargement…</small></div>
+    <div class="seg" role="group" aria-label="Mode de réponse">
+      <button id="tier-default" aria-pressed="true">Réfléchi</button>
+      <button id="tier-quick" aria-pressed="false">Rapide</button>
+    </div>
+  </header>
+
+  <main class="gut" id="scroller">
+    <section class="view" id="v-chat">
+      <div class="hello" id="hello">
+        <h2>Ia ora na, je t'écoute.</h2>
+        <p>Pose ta question. Je m'appuie sur tes consignes et sur ce que tu as mis dans l'onglet Mémoire. Tes conversations restent enregistrées.</p>
+        <div class="chips">
+          <button class="chip" data-q="Résume-moi ce que tu sais de moi grâce à mes notes.">Ce que tu sais de moi</button>
+          <button class="chip" data-q="Aide-moi à écrire un message court et poli pour relancer un client qui n'a pas répondu.">Relancer un client</button>
+          <button class="chip" data-q="Explique-moi simplement comment fonctionne un abonnement Stripe, en 5 points.">M'expliquer un sujet</button>
+        </div>
+      </div>
+      <div class="thread" id="thread" aria-live="polite"></div>
+    </section>
+
+    <section class="view" id="v-mem" hidden>
+      <div class="card">
+        <h2>Consignes</h2>
+        <p class="hint">Comment ton clone doit se comporter. Elles sont envoyées avec chaque message.</p>
+        <textarea id="consignes" rows="9"></textarea>
+        <div class="row">
+          <button class="btn" id="save-consignes">Enregistrer</button>
+          <button class="btn ghost" id="reset-consignes">Rétablir par défaut</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ajouter à la mémoire</h2>
+        <p class="hint">Tes infos, tes projets, tes façons de faire. À chaque question, les passages qui correspondent sont donnés à Claude.</p>
+        <input type="text" id="note-src" placeholder="Titre (ex. Mes projets, Mes prix, Mon style)">
+        <textarea id="note-text" rows="5" placeholder="Écris ou colle ton texte ici…"></textarea>
+        <div class="row">
+          <button class="btn" id="add-note">Ajouter</button>
+          <label class="btn ghost" for="note-file">Importer un fichier .txt / .md</label>
+          <input type="file" id="note-file" accept=".txt,.md,.markdown,.csv,.json,text/*" hidden>
+        </div>
+        <div class="bar" aria-hidden="true"><i id="mem-bar" style="width:0%"></i></div>
+        <p class="hint" id="mem-usage"></p>
+        <div class="list" id="notes-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Sauvegarde</h2>
+        <p class="hint" id="mode-line"></p>
+        <div class="row">
+          <button class="btn ghost" id="export-json">Tout exporter (.json)</button>
+          <button class="btn ghost" id="export-md">Conversation en cours (.md)</button>
+          <label class="btn ghost" for="import-file">Restaurer une sauvegarde</label>
+          <input type="file" id="import-file" accept=".json,application/json" hidden>
+        </div>
+        <div class="stats">
+          <div><b id="st-calls">0</b><span>messages envoyés</span></div>
+          <div><b id="st-in">0</b><span>caractères envoyés</span></div>
+          <div><b id="st-out">0</b><span>caractères reçus</span></div>
+        </div>
+        <p class="hint">Besoin d'une réparation ? Dans une conversation Claude, écris <span class="kw">intervention</span>.</p>
+      </div>
+    </section>
+
+    <section class="view" id="v-hist" hidden>
+      <div class="row"><button class="btn" id="new-conv-2">Nouvelle conversation</button></div>
+      <div class="card"><div class="list" id="conv-list"></div></div>
+    </section>
+  </main>
+
+  <footer class="dock gut">
+    <p class="flash" id="flash" hidden></p>
+    <form class="composer" id="composer">
+      <textarea id="msg" rows="1" placeholder="Écris ton message…" aria-label="Message"></textarea>
+      <button class="btn" id="send" type="submit">Envoyer</button>
+    </form>
+    <nav class="tabs" aria-label="Sections">
+      <button data-view="chat" aria-current="page">Discussion</button>
+      <button data-view="mem">Mémoire</button>
+      <button data-view="hist">Historique</button>
+    </nav>
+  </footer>
+</div>
+
+<script>
+const DEFAULT_CONSIGNES = `Tu es mon assistant IA personnel.
+- Réponds toujours en français, sauf si je te demande une autre langue.
+- Sois honnête et direct : si une chose est impossible, dis-le clairement.
+- Ne prétends jamais avoir des capacités que tu n'as pas. N'invente jamais de faits, de chiffres ou de citations.
+- Commence par une réponse directe en 1 ou 2 phrases, puis détaille seulement si c'est utile (titres, listes, code complet).
+- Je lis sur téléphone : reste court quand 200 mots suffisent.
+- Ton chaleureux et pédagogue, emojis avec parcimonie.
+- Si ma demande est ambiguë, pose-moi une question avant de répondre.
+- Quand des extraits de mes notes sont fournis, appuie-toi dessus en priorité.`;
+
+const NOTES_CAP = 180000;      // caractères de mémoire au total
+const MAX_MSGS = 120;          // messages gardés par conversation
+const HIST_TURNS = 24;         // messages envoyés comme contexte
+const STOP = new Set("les des une est pour que qui dans avec sur pas mais mon mes ton tes son ses nous vous ils elle elles cette ces tout tous plus comment quoi quel quelle quels fait faire peux veux suis etre avoir aux par ont mais sont été tes moi toi lui leur leurs the and".split(" "));
+
+const $ = s => document.querySelector(s);
+const S = { sample:null, dl:null, store:null, mode:null, ready:false, busy:false, ctl:null,
+  view:"chat", tier:"default", convs:[], cur:null, notes:[], profil:null };
+
+const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch{return false}};
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmtN=n=>new Intl.NumberFormat("fr-FR",{notation:n>99999?"compact":"standard"}).format(n||0);
+const fmtD=t=>t?new Date(t).toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+const consignes=()=> (S.profil && S.profil.consignes) || DEFAULT_CONSIGNES;
+const stats=()=> (S.profil && S.profil.stats) || {calls:0,charsIn:0,charsOut:0};
+
+/* ---------- Stockage : compte Claude (db) ou, à défaut, cet appareil ---------- */
+function makeDbStore(db, uid){
+  const profil=db.doc("data/users/"+uid+"/profil");
+  const notes=db.doc("data/users/"+uid+"/notes");
+  const convs=profil.collection("convs");
+  const q={};
+  const write=(key,fn)=>(q[key]=(q[key]||Promise.resolve()).catch(()=>{}).then(fn));
+  return { kind:"db",
+    subscribe(on){
+      const offs=[
+        profil.onSnapshot(s=>on.profil(s.exists?s.data():null),on.error),
+        notes.onSnapshot(s=>on.notes(s.exists?(s.data().items||[]):[]),on.error),
+        convs.orderBy("updatedAt","desc").limit(200).onSnapshot(s=>on.convs(s.docs.map(d=>Object.assign({id:d.id},d.data()))),on.error)
+      ];
+      return ()=>offs.forEach(f=>f());
+    },
+    saveConv:c=>write("c:"+c.id,()=>convs.doc(c.id).set({title:c.title||"",createdAt:c.createdAt,updatedAt:c.updatedAt,messages:c.messages})),
+    deleteConv:id=>write("c:"+id,()=>convs.doc(id).delete()),
+    saveNotes:items=>write("notes",()=>notes.set({items})),
+    saveProfil:p=>write("profil",()=>profil.set(p)),
+  };
+}
+function makeLocalStore(){
+  const ok=fn=>{const r=fn();return r===false?Promise.reject({code:"local_full"}):Promise.resolve()};
+  return { kind:"local",
+    subscribe(on){on.profil(lsGet("ci.profil",null));on.notes(lsGet("ci.notes",[]));on.convs(lsGet("ci.convs",[]));return()=>{}},
+    saveConv:c=>ok(()=>lsSet("ci.convs",[c,...lsGet("ci.convs",[]).filter(x=>x.id!==c.id)])),
+    deleteConv:id=>ok(()=>lsSet("ci.convs",lsGet("ci.convs",[]).filter(x=>x.id!==id))),
+    saveNotes:items=>ok(()=>lsSet("ci.notes",items)),
+    saveProfil:p=>ok(()=>lsSet("ci.profil",p)),
+  };
+}
+function saveFailed(e){
+  if(e&&e.code==="quota_exceeded") flash("Stockage plein : supprime d'anciennes conversations ou des notes.",true);
+  else if(e&&e.code==="local_full") flash("La mémoire de ce navigateur est pleine. Exporte puis supprime d'anciennes conversations.",true);
+  else flash("Enregistrement impossible pour l'instant. Ton message reste affiché ; réessaie plus tard.",true);
+}
+
+/* ---------- Mémoire (notes) ---------- */
+function chunk(text){
+  const paras=text.replace(/\r/g,"").split(/\n\s*\n/);const out=[];let cur="";
+  for(const p of paras){
+    if((cur+"\n\n"+p).length>900&&cur){out.push(cur.trim());cur=""}
+    if(p.length>900){for(let i=0;i<p.length;i+=900)out.push(p.slice(i,i+900).trim());continue}
+    cur+=(cur?"\n\n":"")+p;
+  }
+  if(cur.trim())out.push(cur.trim());
+  return out.filter(Boolean);
+}
+const notesSize=()=>S.notes.reduce((n,x)=>n+x.text.length+x.source.length,0);
+function addNotes(source,text){
+  source=(source||"Note").trim().slice(0,80);text=(text||"").trim();
+  if(!text){flash("Écris d'abord un texte à mémoriser.",true);return false}
+  const parts=chunk(text).map(t=>({id:newId(),source,text:t,at:Date.now()}));
+  const add=parts.reduce((n,x)=>n+x.text.length+x.source.length,0);
+  if(notesSize()+add>NOTES_CAP){flash("Mémoire pleine : supprime une source avant d'en ajouter.",true);return false}
+  S.notes=[...S.notes,...parts];
+  S.store.saveNotes(S.notes).catch(saveFailed);
+  renderNotes();flash(parts.length+" passage"+(parts.length>1?"s":"")+" ajouté"+(parts.length>1?"s":"")+" à « "+source+" ».");
+  return true;
+}
+function relevant(query){
+  const total=notesSize();
+  if(S.notes.length&&total<6000) return S.notes;            // petite mémoire : tout est envoyé
+  const words=[...new Set(query.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu)||[])].filter(w=>!STOP.has(w));
+  if(!words.length)return[];
+  return S.notes.map(n=>{const t=(n.source+" "+n.text).toLowerCase();let s=0;
+      for(const w of words){let i=-1,c=0;while((i=t.indexOf(w,i+1))!==-1&&c<20)c++;s+=c}return[s,n]})
+    .filter(x=>x[0]>0).sort((a,b)=>b[0]-a[0]).slice(0,5).map(x=>x[1]);
+}
+
+/* ---------- Conversations ---------- */
+const currentConv=()=>S.convs.find(c=>c.id===S.cur)||null;
+function upsert(c){S.convs=[c,...S.convs.filter(x=>x.id!==c.id)].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))}
+function trimConv(c){
+  let m=c.messages.slice(-MAX_MSGS);
+  while(m.length>2&&JSON.stringify(m).length>200000)m=m.slice(2);
+  return Object.assign({},c,{messages:m});
+}
+function newConv(){S.cur=null;try{localStorage.removeItem("ci.cur")}catch{}showView("chat");renderThread();renderHeader();$("#msg").focus()}
+
+function buildTurns(conv){
+  const msgs=conv.messages.filter(m=>m.content&&m.content.trim());
+  const last=msgs[msgs.length-1].content;
+  const hits=relevant(last);
+  const now=new Date().toLocaleString("fr-FR",{dateStyle:"full",timeStyle:"short"});
+  const rules="Consignes permanentes de l'utilisateur (applique-les sans les répéter) :\n\n"+consignes()+
+    "\n\nDate et heure actuelles chez l'utilisateur : "+now+
+    ".\nTu réponds dans son application « Mon Clone IA ». Tu n'as ni internet ni outils : tu connais seulement cette conversation et les extraits de ses notes quand ils sont fournis.";
+  const ctx=hits.length?"Extraits de mes notes personnelles (utilise-les s'ils sont utiles) :\n\n"+
+    hits.map(h=>"[ "+h.source+" ]\n"+h.text).join("\n\n")+"\n\n---\n\nMon message :\n":"";
+  let hist=msgs.slice(0,-1).slice(-HIST_TURNS).map(m=>({role:m.role,content:m.content.slice(0,6000)}));
+  const make=()=>[{role:"user",content:rules},...hist,{role:"user",content:ctx+last}];
+  while(hist.length&&new Blob([JSON.stringify(make())]).size>230000)hist=hist.slice(1);
+  return make();
+}
+
+const ERRORS={
+  not_granted:"Tu n'as pas autorisé cette page à utiliser Claude. Recharge la page et accepte pour discuter.",
+  sampling_disabled:"Claude n'est pas disponible pour ce compte.",
+  not_declared:"Claude n'est pas activé sur cette page.",
+  capability_disabled:"Claude n'est pas disponible dans cette vue. Ouvre la page dans l'app Claude.",
+  rate_limited:"Trop de messages d'un coup, ou limite d'usage atteinte. Réessaie dans un moment.",
+  session_expired:"Ta session Claude a expiré : reconnecte-toi puis recharge la page.",
+  prompt_too_large:"Cette conversation est trop longue. Démarre une nouvelle conversation.",
+  refused:"Claude a refusé cette demande. Reformule-la autrement.",
+  empty_completion:"Aucune réponse reçue. Reformule ta question plus simplement.",
+};
+async function send(text){
+  text=(text||"").trim();
+  if(S.busy||!text)return;
+  if(!S.sample){flash("Claude n'est pas joignable ici. Ouvre cette page depuis l'app ou le site Claude, connecté à ton compte.",true);return}
+  hideFlash();
+  const base=currentConv()||{id:newId(),title:"",createdAt:Date.now(),messages:[]};
+  let conv=Object.assign({},base,{messages:[...base.messages,{role:"user",content:text,at:Date.now()}],updatedAt:Date.now()});
+  if(!conv.title)conv.title=text.replace(/\s+/g," ").slice(0,52);
+  conv=trimConv(conv);
+  S.cur=conv.id;lsSet("ci.cur",conv.id);upsert(conv);
+  S.store.saveConv(conv).catch(saveFailed);
+  $("#msg").value="";autosize();
+  renderThread();renderHeader();renderConvs();
+  S.busy=true;setBusy(true);
+  const bubble=botBubble(null);
+  const body=bubble.querySelector(".body");
+  const ctl=new AbortController();S.ctl=ctl;
+  let shown="",raf=0;
+  const paint=t=>{shown=t;if(!raf)raf=requestAnimationFrame(()=>{raf=0;body.className="body";body.innerHTML=md(shown);stick()})};
+  const turns=buildTurns(conv);
+  const inChars=turns.reduce((n,t)=>n+t.content.length,0);
+  try{
+    const r=await S.sample(turns,{cache:false,signal:ctl.signal,modelTier:S.tier,onText:({text})=>paint(text)});
+    cancelAnimationFrame(raf);raf=0;body.className="body";body.innerHTML=md(r.text);
+    commit(conv,r.text,inChars,bubble);
+    if(r.truncated)flash("Réponse coupée car trop longue : demande une partie à la fois.");
+  }catch(e){
+    cancelAnimationFrame(raf);raf=0;
+    const code=e&&e.code;const partial=(e&&e.text)||"";
+    if(code==="refused"||!partial){bubble.remove()}
+    else{body.className="body";body.innerHTML=md(partial);commit(conv,partial+"\n\n*(réponse interrompue)*",inChars,bubble)}
+    if(code!=="cancelled")flash(ERRORS[code]||"La réponse a été interrompue. Réessaie.",true);
+  }finally{S.busy=false;S.ctl=null;setBusy(false);stick()}
+}
+function commit(conv,text,inChars,bubble){
+  const at=Date.now();
+  const c=trimConv(Object.assign({},conv,{messages:[...conv.messages,{role:"assistant",content:text,at}],updatedAt:at}));
+  upsert(c);S.store.saveConv(c).catch(saveFailed);
+  fillMeta(bubble,text,at);
+  const st=stats();
+  S.profil=Object.assign({},S.profil||{},{stats:{calls:(st.calls||0)+1,charsIn:(st.charsIn||0)+inChars,charsOut:(st.charsOut||0)+text.length}});
+  S.store.saveProfil(S.profil).catch(()=>{});
+  renderStats();renderConvs();
+}
+
+/* ---------- Rendu ---------- */
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function inline(s){
+  return s.replace(/`([^`\n]+)`/g,"<code>$1</code>")
+    .replace(/\*\*([^*\n]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>")
+    .replace(/\[([^\]\n]+)\]\((https:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function md(src){
+  const parts=String(src).split("```");let out="";
+  parts.forEach((p,i)=>{
+    if(i%2){const nl=p.indexOf("\n");const code=nl>=0?p.slice(nl+1):p;out+="<pre><code>"+esc(code.replace(/\n$/,""))+"</code></pre>";return}
+    const lines=esc(p).split("\n");let list=null,para=[];
+    const flushP=()=>{if(para.length){out+="<p>"+inline(para.join("<br>"))+"</p>";para=[]}};
+    const flushL=()=>{if(list){out+="</"+list+">";list=null}};
+    for(const raw of lines){
+      const l=raw.trimEnd();let m;
+      if(!l.trim()){flushP();flushL();continue}
+      if((m=l.match(/^#{1,6}\s+(.*)$/))){flushP();flushL();out+="<h3>"+inline(m[1])+"</h3>";continue}
+      if((m=l.match(/^\s*[-*•]\s+(.*)$/))){flushP();if(list!=="ul"){flushL();out+="<ul>";list="ul"}out+="<li>"+inline(m[1])+"</li>";continue}
+      if((m=l.match(/^\s*\d+[.)]\s+(.*)$/))){flushP();if(list!=="ol"){flushL();out+="<ol>";list="ol"}out+="<li>"+inline(m[1])+"</li>";continue}
+      flushL();para.push(l);
+    }
+    flushP();flushL();
+  });
+  return out;
+}
+const stick=()=>{const s=$("#scroller");if(S.view==="chat")s.scrollTop=s.scrollHeight};
+function userBubble(m){const d=document.createElement("div");d.className="msg user";d.textContent=m.content;return d}
+function botBubble(m){
+  const d=document.createElement("div");d.className="msg bot";
+  const b=document.createElement("div");
+  if(m){b.className="body";b.innerHTML=md(m.content)}else{b.className="body thinking";b.textContent="Réflexion…"}
+  d.append(b);$("#thread").append(d);$("#hello").hidden=true;
+  if(m)fillMeta(d,m.content,m.at);
+  stick();return d;
+}
+function fillMeta(d,content,at){
+  d.querySelector(".meta")?.remove();
+  const meta=document.createElement("div");meta.className="meta";
+  const t=document.createElement("span");t.textContent=fmtD(at);
+  const c=document.createElement("button");c.className="linkbtn";c.type="button";c.textContent="Copier";
+  c.onclick=async()=>{try{await navigator.clipboard.writeText(content);c.textContent="Copié"}catch{
+    const r=document.createRange();r.selectNodeContents(d.querySelector(".body"));const s=getSelection();s.removeAllRanges();s.addRange(r);c.textContent="Texte sélectionné"}
+    setTimeout(()=>c.textContent="Copier",1800)};
+  meta.append(t,c);d.append(meta);
+}
+function renderThread(){
+  const th=$("#thread");th.textContent="";
+  const c=currentConv();
+  $("#hello").hidden=!!(c&&c.messages.length);
+  if(!c)return;
+  for(const m of c.messages){if(m.role==="user")th.append(userBubble(m));else botBubble(m)}
+  stick();
+}
+function renderHeader(){
+  const c=currentConv();
+  $("#sub").textContent=!S.ready?"Chargement…":(c?c.title:"Nouvelle conversation");
+}
+function renderConvs(){
+  const box=$("#conv-list");box.textContent="";
+  if(!S.convs.length){const p=document.createElement("p");p.className="empty";p.textContent="Aucune conversation pour l'instant. Écris ton premier message dans l'onglet Discussion.";box.append(p);return}
+  for(const c of S.convs){
+    const it=document.createElement("div");it.className="item open"+(c.id===S.cur?" current":"");
+    const g=document.createElement("div");g.className="grow";
+    const t=document.createElement("div");t.className="t";t.textContent=c.title||"Sans titre";
+    const s=document.createElement("div");s.className="s";s.textContent=fmtD(c.updatedAt)+" · "+c.messages.length+" messages";
+    g.append(t,s);
+    g.onclick=()=>{S.cur=c.id;lsSet("ci.cur",c.id);showView("chat");renderThread();renderHeader()};
+    it.append(g,delBtn(()=>{S.convs=S.convs.filter(x=>x.id!==c.id);if(S.cur===c.id)S.cur=null;
+      S.store.deleteConv(c.id).catch(saveFailed);renderConvs();renderThread();renderHeader()}));
+    box.append(it);
+  }
+}
+function delBtn(onConfirm){
+  const b=document.createElement("button");b.className="btn danger";b.type="button";b.textContent="Supprimer";let armed=0;
+  b.onclick=e=>{e.stopPropagation();if(armed){clearTimeout(armed);onConfirm();return}
+    b.textContent="Confirmer ?";armed=setTimeout(()=>{armed=0;b.textContent="Supprimer"},3000)};
+  return b;
+}
+function renderNotes(){
+  const box=$("#notes-list");box.textContent="";
+  const groups=new Map();
+  for(const n of S.notes){const g=groups.get(n.source)||{n:0,chars:0,at:0};g.n++;g.chars+=n.text.length;g.at=Math.max(g.at,n.at||0);groups.set(n.source,g)}
+  const used=notesSize();
+  $("#mem-bar").style.width=Math.min(100,used/NOTES_CAP*100).toFixed(1)+"%";
+  $("#mem-usage").textContent=fmtN(used)+" caractères sur "+fmtN(NOTES_CAP)+" utilisés"+(groups.size?" · "+groups.size+" source"+(groups.size>1?"s":""):"");
+  if(!groups.size){const p=document.createElement("p");p.className="empty";p.textContent="Ta mémoire est vide. Ajoute par exemple qui tu es, tes projets en cours ou ta façon de parler aux clients.";box.append(p);return}
+  for(const [src,g] of groups){
+    const it=document.createElement("div");it.className="item";
+    const d=document.createElement("div");d.className="grow";
+    const t=document.createElement("div");t.className="t";t.textContent=src;
+    const s=document.createElement("div");s.className="s";s.textContent=g.n+" passage"+(g.n>1?"s":"")+" · "+fmtN(g.chars)+" caractères · "+fmtD(g.at);
+    d.append(t,s);
+    it.append(d,delBtn(()=>{S.notes=S.notes.filter(n=>n.source!==src);S.store.saveNotes(S.notes).catch(saveFailed);renderNotes()}));
+    box.append(it);
+  }
+}
+function renderConsignes(){const ta=$("#consignes");if(document.activeElement!==ta&&!ta.dataset.dirty)ta.value=consignes()}
+function renderStats(){const s=stats();$("#st-calls").textContent=fmtN(s.calls);$("#st-in").textContent=fmtN(s.charsIn);$("#st-out").textContent=fmtN(s.charsOut)}
+function renderMode(){
+  $("#mode-line").textContent=S.mode==="db"
+    ?"Tout est enregistré dans ton compte Claude : tu retrouves tes conversations et ta mémoire sur n'importe quel appareil. Exporte une copie de temps en temps pour la garder sur ton téléphone."
+    :"Tout est enregistré dans ce navigateur, sur cet appareil uniquement. Exporte une copie régulièrement pour ne rien perdre.";
+}
+function showView(v){
+  S.view=v;
+  $("#v-chat").hidden=v!=="chat";$("#v-mem").hidden=v!=="mem";$("#v-hist").hidden=v!=="hist";
+  $("#composer").hidden=v!=="chat";
+  document.querySelectorAll(".tabs button").forEach(b=>{if(b.dataset.view===v)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  $("#scroller").scrollTop=v==="chat"?$("#scroller").scrollHeight:0;
+}
+function setBusy(on){
+  const b=$("#send");b.textContent=on?"Stop":"Envoyer";b.classList.toggle("ghost",on);
+}
+let flashT=0;
+function flash(msg,err){const f=$("#flash");f.textContent=msg;f.className="flash"+(err?" err":"");f.hidden=false;clearTimeout(flashT);flashT=setTimeout(hideFlash,err?9000:4000)}
+function hideFlash(){$("#flash").hidden=true}
+function autosize(){const t=$("#msg");t.style.height="auto";t.style.height=Math.min(t.scrollHeight,200)+"px"}
+function setTier(t){S.tier=t;lsSet("ci.tier",t);$("#tier-default").setAttribute("aria-pressed",t==="default");$("#tier-quick").setAttribute("aria-pressed",t==="quick")}
+
+/* ---------- Sauvegarde ---------- */
+async function saveFile(filename,data,label){
+  if(!S.dl){flash("Le téléchargement n'est pas disponible ici. Ouvre la page dans l'app Claude.",true);return}
+  try{await S.dl.save({filename,data});flash(label+" enregistré.")}
+  catch(e){if(e&&e.code!=="cancelled"&&e.code!=="declined")flash("Le fichier n'a pas pu être enregistré.",true)}
+}
+const today=()=>new Date().toISOString().slice(0,10);
+function exportAll(){
+  const data={app:"Mon Clone IA",version:1,exportedAt:new Date().toISOString(),consignes:consignes(),notes:S.notes,
+    conversations:S.convs.map(c=>({id:c.id,title:c.title,createdAt:c.createdAt,updatedAt:c.updatedAt,messages:c.messages}))};
+  saveFile("clone-ia-sauvegarde-"+today()+".json",JSON.stringify(data,null,2),"Sauvegarde");
+}
+function exportMd(){
+  const c=currentConv();if(!c){flash("Ouvre d'abord une conversation.",true);return}
+  const md="# "+(c.title||"Conversation")+"\n\n"+c.messages.map(m=>"**"+(m.role==="user"?"Moi":"Clone")+"** · "+fmtD(m.at)+"\n\n"+m.content).join("\n\n---\n\n")+"\n";
+  saveFile("conversation-"+today()+".md",md,"Conversation");
+}
+async function importBackup(file){
+  let data;try{data=JSON.parse(await file.text())}catch{flash("Ce fichier n'est pas une sauvegarde lisible.",true);return}
+  if(!data||data.app!=="Mon Clone IA"){flash("Ce fichier ne vient pas de Mon Clone IA.",true);return}
+  if(typeof data.consignes==="string"){S.profil=Object.assign({},S.profil||{},{consignes:data.consignes});S.store.saveProfil(S.profil).catch(saveFailed)}
+  if(Array.isArray(data.notes)){
+    const ids=new Set(S.notes.map(n=>n.id));const add=data.notes.filter(n=>n&&n.id&&n.text&&!ids.has(n.id));
+    S.notes=[...S.notes,...add];while(S.notes.length&&notesSize()>NOTES_CAP)S.notes.pop();
+    S.store.saveNotes(S.notes).catch(saveFailed);
+  }
+  let n=0;
+  for(const c of (data.conversations||[])){
+    if(!c||!c.id||!Array.isArray(c.messages))continue;
+    const cc=trimConv({id:String(c.id),title:String(c.title||""),createdAt:c.createdAt||Date.now(),updatedAt:c.updatedAt||Date.now(),messages:c.messages});
+    upsert(cc);await S.store.saveConv(cc).catch(saveFailed);n++;
+  }
+  renderAll();flash("Sauvegarde restaurée : "+n+" conversation"+(n>1?"s":"")+" et ta mémoire.");
+}
+
+function renderAll(){renderHeader();if(!S.busy)renderThread();renderConvs();renderNotes();renderConsignes();renderStats();renderMode()}
+
+/* ---------- Événements ---------- */
+$("#composer").addEventListener("submit",e=>{e.preventDefault();if(S.busy){S.ctl&&S.ctl.abort();return}send($("#msg").value)});
+$("#msg").addEventListener("input",autosize);
+$("#msg").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();$("#composer").requestSubmit()}});
+document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>send(b.dataset.q));
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showView(b.dataset.view));
+$("#tier-default").onclick=()=>setTier("default");$("#tier-quick").onclick=()=>setTier("quick");
+$("#new-conv-2").onclick=newConv;
+$("#consignes").addEventListener("input",e=>e.target.dataset.dirty="1");
+$("#save-consignes").onclick=()=>{const v=$("#consignes").value.trim()||DEFAULT_CONSIGNES;
+  S.profil=Object.assign({},S.profil||{},{consignes:v});delete $("#consignes").dataset.dirty;
+  S.store.saveProfil(S.profil).then(()=>flash("Consignes enregistrées.")).catch(saveFailed)};
+$("#reset-consignes").onclick=()=>{$("#consignes").value=DEFAULT_CONSIGNES;$("#consignes").dataset.dirty="1";flash("Consignes par défaut remises. Appuie sur Enregistrer pour valider.")};
+$("#add-note").onclick=()=>{if(addNotes($("#note-src").value,$("#note-text").value)){$("#note-text").value="";$("#note-src").value=""}};
+$("#note-file").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+  if(f.size>400000){flash("Fichier trop gros : 400 Ko maximum.",true);return}
+  addNotes(f.name.replace(/\.[^.]+$/,""),await f.text())};
+$("#export-json").onclick=exportAll;$("#export-md").onclick=exportMd;
+$("#import-file").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(f)importBackup(f)};
+
+/* ---------- Démarrage ---------- */
+setTier(lsGet("ci.tier","default")==="quick"?"quick":"default");
+S.cur=lsGet("ci.cur",null);
+showView("chat");renderAll();
+(async()=>{
+  const c=window.claude;
+  const use=n=>c&&c.use?c.use(n).catch(()=>null):Promise.resolve(null);
+  const [db,user,sample,dl]=await Promise.all([use("db"),use("user"),use("sample"),use("downloads")]);
+  S.sample=sample;S.dl=dl;
+  const uid=user?await user.id():null;
+  S.store=(db&&uid)?makeDbStore(db,uid):makeLocalStore();
+  S.mode=S.store.kind;
+  let loadT=setTimeout(()=>{if(!S.ready){S.ready=true;renderAll();flash("Tes données mettent du temps à arriver. Vérifie ta connexion.",true)}},10000);
+  const done=()=>{if(!S.ready){S.ready=true;clearTimeout(loadT)}renderAll()};
+  S.store.subscribe({
+    profil:p=>{S.profil=p;done()},
+    notes:items=>{S.notes=Array.isArray(items)?items.slice():[];done()},
+    convs:list=>{S.convs=list.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+      if(S.cur&&!S.convs.some(x=>x.id===S.cur)&&!S.busy)S.cur=null;done()},
+    error:()=>{clearTimeout(loadT);S.ready=true;renderAll();flash("Connexion à tes données perdue. Recharge la page.",true)}
+  });
+  if(!sample)flash("Claude n'est pas joignable ici. Ouvre cette page depuis l'app ou le site Claude, connecté à ton compte.",true);
+})();
+</script>
