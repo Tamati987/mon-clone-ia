@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<title>Mon Clone IA</title>
+<meta name="description" content="Ton assistant IA personnel, branché sur l'IA de ton choix.">
+<meta name="theme-color" content="#05060E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Clone IA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout : écran unique — en-tête avec le noyau lumineux, fil de discussion, console de saisie, quatre onglets */
+:root{
+  color-scheme:dark;
+  --bg:#05060E; --bg2:#0A0C1F;
+  --panel:rgba(20,24,52,.62); --panel-solid:#11142C; --line:rgba(140,160,255,.16); --line-hi:rgba(140,170,255,.34);
+  --ink:#E8ECFF; --muted:#8A93B8; --faint:#5B638A;
+  --c1:#5EF1FF; --c2:#9B6BFF; --holo:linear-gradient(120deg,#5EF1FF 0%,#7FA8FF 45%,#9B6BFF 100%);
+  --ok:#4BE3A0; --warn:#FFC857; --err:#FF6B81;
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:18px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 var(--f-body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(60% 40% at 85% -5%,rgba(155,107,255,.28),transparent 70%),
+    radial-gradient(55% 35% at 0% 105%,rgba(94,241,255,.16),transparent 70%),
+    linear-gradient(rgba(120,140,255,.05) 1px,transparent 1px) 0 0/100% 34px,
+    linear-gradient(90deg,rgba(120,140,255,.05) 1px,transparent 1px) 0 0/34px 100%;
+  -webkit-mask-image:linear-gradient(#000 0%,rgba(0,0,0,.55) 60%,#000 100%);mask-image:linear-gradient(#000 0%,rgba(0,0,0,.55) 60%,#000 100%)}
+[hidden]{display:none!important}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--c1);outline-offset:2px}
+
+.app{position:relative;z-index:1;height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;max-width:760px;margin:0 auto;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* En-tête */
+header{display:flex;align-items:center;gap:12px;padding-block:14px 12px}
+.orb{width:42px;height:42px;border-radius:50%;flex:none;position:relative;
+  background:conic-gradient(from 0deg,#5EF1FF,#9B6BFF,#5EF1FF);box-shadow:0 0 22px rgba(94,241,255,.35),0 0 44px rgba(155,107,255,.25)}
+.orb::after{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#E8ECFF 0 28%,#5EF1FF 30% 46%,var(--bg) 49%)}
+.orb.live{animation:spin 1.1s linear infinite,pulse 1.1s ease-in-out infinite alternate}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{to{box-shadow:0 0 30px rgba(94,241,255,.7),0 0 70px rgba(155,107,255,.5)}}
+.brand{flex:1;min-width:0}
+.brand h1{margin:0;font:700 1.02rem/1.15 var(--f-display);letter-spacing:.06em;text-transform:uppercase}
+.brand h1 span{background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
+.status{display:flex;align-items:center;gap:6px;font:500 .74rem/1.3 var(--f-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}
+.dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)} .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+.iconbtn{flex:none;height:38px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 .8rem var(--f-body);cursor:pointer;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.iconbtn.holo{border-color:transparent;background:linear-gradient(var(--panel-solid),var(--panel-solid)) padding-box,var(--holo) border-box;border:1px solid transparent}
+
+main{overflow-y:auto;overscroll-behavior:contain;padding-block:8px 20px}
+.view{display:flex;flex-direction:column;gap:16px}
+
+/* Accueil */
+.hero{padding-block:22px 6px;display:flex;flex-direction:column;gap:12px}
+.eyebrow{font:600 .7rem/1 var(--f-mono);letter-spacing:.18em;text-transform:uppercase;color:var(--c1)}
+.hero h2{margin:0;font:700 clamp(1.6rem,7.4vw,2.4rem)/1.08 var(--f-display);letter-spacing:-.01em;text-wrap:balance}
+.hero h2 em{font-style:normal;background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{margin:0;color:var(--muted);max-width:54ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:9px 14px;font-size:.92rem;cursor:pointer;text-align:left;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.chip:hover{border-color:var(--line-hi)}
+
+/* Messages */
+.thread{display:flex;flex-direction:column;gap:14px}
+.msg{max-width:90%;min-width:0;overflow-wrap:anywhere;border-radius:var(--r);padding:11px 15px}
+.msg.user{align-self:flex-end;white-space:pre-wrap;border-bottom-right-radius:6px;
+  background:linear-gradient(rgba(36,30,86,.92),rgba(24,30,72,.92)) padding-box,var(--holo) border-box;border:1px solid transparent}
+.msg.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:6px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.who{display:flex;align-items:center;gap:6px;font:600 .66rem/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--c1);margin-bottom:6px}
+.who i{width:6px;height:6px;border-radius:50%;background:var(--holo)}
+.body p{margin:0 0 .65em}.body>:last-child{margin-bottom:0}
+.body h3{font:700 .98rem/1.3 var(--f-display);margin:.8em 0 .35em;letter-spacing:.01em}
+.body ul,.body ol{margin:.2em 0 .65em;padding-left:1.3em}
+.body li{margin:.15em 0}
+.body code{font:.86em var(--f-mono);background:rgba(94,241,255,.08);border:1px solid rgba(94,241,255,.14);padding:1px 5px;border-radius:6px}
+.body pre{background:#070915;border:1px solid var(--line);border-radius:12px;padding:12px;overflow-x:auto;margin:.6em 0;font:.82rem/1.5 var(--f-mono)}
+.body pre code{background:none;border:0;padding:0;font-size:inherit}
+.body a{color:var(--c1)}
+.body strong{color:#fff}
+.thinking{display:flex;gap:6px;align-items:center;color:var(--muted);font:500 .85rem var(--f-mono)}
+.thinking b{width:6px;height:6px;border-radius:50%;background:var(--c1);animation:blink 1s infinite}
+.thinking b:nth-child(2){animation-delay:.15s;background:#7FA8FF}.thinking b:nth-child(3){animation-delay:.3s;background:var(--c2)}
+@keyframes blink{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+.meta{display:flex;gap:14px;align-items:center;margin-top:8px;font:500 .72rem var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.link{border:0;background:none;color:var(--c1);font:600 .74rem var(--f-mono);padding:4px 0;cursor:pointer}
+
+/* Console de saisie */
+footer{padding-block:8px 6px;background:linear-gradient(transparent,var(--bg) 28%)}
+.flash{margin:0 0 8px;padding:9px 13px;border-radius:12px;font-size:.88rem;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.flash.err{border-color:rgba(255,107,129,.45);color:#FFC2CC}
+.console{display:flex;gap:8px;align-items:flex-end;padding:6px;border-radius:22px;
+  background:linear-gradient(var(--panel-solid),var(--panel-solid)) padding-box,linear-gradient(120deg,rgba(94,241,255,.45),rgba(155,107,255,.45)) border-box;border:1px solid transparent;
+  box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.console:focus-within{box-shadow:0 0 0 3px rgba(94,241,255,.12),0 10px 40px rgba(0,0,0,.45)}
+#msg{flex:1;min-width:0;resize:none;border:0;background:transparent;padding:10px 8px 10px 12px;max-height:9.5em;outline:none;font-size:16px;line-height:1.4}
+#msg::placeholder{color:var(--faint)}
+.send{flex:none;width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;background:var(--holo);color:#06081A;display:grid;place-items:center;box-shadow:0 0 18px rgba(94,241,255,.35)}
+.send svg{width:20px;height:20px}
+.send.stop{background:var(--panel-solid);color:var(--err);border:1px solid rgba(255,107,129,.5);box-shadow:none}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+.tabs button{border:0;background:transparent;color:var(--faint);font:600 .7rem/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;padding:11px 2px;border-radius:12px;cursor:pointer}
+.tabs button[aria-current="page"]{color:var(--ink);background:var(--panel);box-shadow:inset 0 0 0 1px var(--line-hi)}
+
+/* Panneaux */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.panel h2{margin:0;font:700 .95rem/1.2 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+.hint{margin:0;color:var(--muted);font-size:.88rem}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font:600 .68rem/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.input,textarea.input{width:100%;min-width:0;border:1px solid var(--line);background:rgba(5,6,14,.55);border-radius:12px;padding:11px 13px;font-size:16px}
+textarea.input{resize:vertical;line-height:1.45}
+.input:focus{border-color:var(--c1);outline:none;box-shadow:0 0 0 3px rgba(94,241,255,.12)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:0;border-radius:12px;padding:11px 16px;font:600 .9rem var(--f-body);cursor:pointer;background:var(--holo);color:#06081A}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line-hi)}
+.btn.danger{background:transparent;color:var(--err);border:1px solid rgba(255,107,129,.35)}
+.btn:disabled{opacity:.45;cursor:default}
+.list{display:flex;flex-direction:column}
+.item{display:flex;gap:10px;align-items:center;padding-block:11px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.grow{flex:1;min-width:0}
+.t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.s{color:var(--muted);font:500 .74rem var(--f-mono);font-variant-numeric:tabular-nums}
+.item.open .grow{cursor:pointer}
+.item.current .t{color:var(--c1)}
+.empty{margin:0;color:var(--muted);font-size:.9rem}
+.meter{height:6px;border-radius:99px;background:rgba(140,160,255,.12);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--holo)}
+.kw{font:600 .9em var(--f-mono);color:var(--c1)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stats div{display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:12px;background:rgba(5,6,14,.45);border:1px solid var(--line)}
+.stats b{font:700 1.05rem var(--f-display);font-variant-numeric:tabular-nums}
+.stats span{color:var(--muted);font-size:.72rem}
+
+/* Connecteurs */
+.provs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.prov{position:relative;text-align:left;border:1px solid var(--line);background:rgba(5,6,14,.5);border-radius:14px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-width:0}
+.prov b{font:700 .82rem var(--f-display);letter-spacing:.02em}
+.prov small{color:var(--muted);font-size:.74rem;line-height:1.3}
+.prov .st{font:600 .62rem var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.prov.ready .st{color:var(--ok)}
+.prov[aria-pressed="true"]{border-color:transparent;background:linear-gradient(#0E1230,#0E1230) padding-box,var(--holo) border-box;border:1px solid transparent}
+.prov.active::after{content:"ACTIF";position:absolute;top:10px;right:10px;font:700 .56rem var(--f-mono);letter-spacing:.12em;color:#06081A;background:var(--ok);padding:3px 6px;border-radius:6px}
+.keyrow{display:flex;gap:8px}
+.keyrow .input{flex:1}
+.ext{color:var(--c1);font-size:.86rem}
+.test{font:500 .8rem var(--f-mono);color:var(--muted);margin:0;white-space:pre-wrap}
+.test.ok{color:var(--ok)}.test.err{color:var(--err)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion:no-preference){.msg{animation:rise .22s ease-out}@keyframes rise{from{opacity:.4;transform:translateY(6px)}}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="gut">
+    <div class="orb" id="orb" aria-hidden="true"></div>
+    <div class="brand">
+      <h1>Mon <span>Clone</span> IA</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="status">Aucune IA branchée</span></div>
+    </div>
+    <button class="iconbtn holo" id="install" hidden>Installer</button>
+    <button class="iconbtn" id="new">Nouveau</button>
+  </header>
+
+  <main class="gut" id="scroller">
+    <!-- Discussion -->
+    <section class="view" id="v-chat">
+      <div class="hero" id="hero">
+        <span class="eyebrow" id="hero-eyebrow">Ia ora na</span>
+        <h2 id="hero-title">Ton double numérique est <em>prêt</em>.</h2>
+        <p id="hero-text">Pose une question. Il s'appuie sur tes consignes et ta mémoire, avec l'IA que tu as branchée.</p>
+        <div class="chips" id="chips">
+          <button class="chip" data-q="Résume ce que tu sais de moi grâce à mes notes.">Ce que tu sais de moi</button>
+          <button class="chip" data-q="Écris un message court et poli pour relancer un client qui n'a pas répondu.">Relancer un client</button>
+          <button class="chip" data-q="Donne-moi 3 idées concrètes pour gagner un revenu en plus ce mois-ci, depuis mon téléphone.">3 idées de revenus</button>
+        </div>
+        <div class="row" id="hero-cta" hidden><button class="btn" data-goto="ia">Brancher une IA</button></div>
+      </div>
+      <div class="thread" id="thread" aria-live="polite"></div>
+    </section>
+
+    <!-- Mémoire -->
+    <section class="view" id="v-mem" hidden>
+      <div class="panel">
+        <h2>Consignes</h2>
+        <p class="hint">Sa personnalité et ses règles. Envoyées avec chaque message.</p>
+        <textarea class="input" id="consignes" rows="9"></textarea>
+        <div class="row"><button class="btn" id="save-consignes">Enregistrer</button><button class="btn ghost" id="reset-consignes">Par défaut</button></div>
+      </div>
+      <div class="panel">
+        <h2>Entraîner la mémoire</h2>
+        <p class="hint">Qui tu es, tes projets, tes prix, ta façon de parler aux clients. À chaque question, les passages utiles sont donnés à l'IA.</p>
+        <div class="field"><label for="note-src">Titre</label><input class="input" id="note-src" type="text" placeholder="Mes projets, Mes prix, Mon style…"></div>
+        <div class="field"><label for="note-text">Contenu</label><textarea class="input" id="note-text" rows="5" placeholder="Écris ou colle ton texte ici…"></textarea></div>
+        <div class="row">
+          <button class="btn" id="add-note">Mémoriser</button>
+          <label class="btn ghost" for="note-file">Importer un fichier</label>
+          <input type="file" id="note-file" accept=".txt,.md,.markdown,.csv,.json,text/*" hidden>
+        </div>
+        <div class="meter" aria-hidden="true"><i id="mem-bar" style="width:0%"></i></div>
+        <p class="hint" id="mem-usage"></p>
+        <div class="list" id="notes"></div>
+      </div>
+      <div class="panel">
+        <h2>Sauvegarde</h2>
+        <p class="hint">Tout est stocké dans ton téléphone. Exporte une copie de temps en temps : elle sert aussi à tout récupérer sur un autre appareil.</p>
+        <div class="row">
+          <button class="btn ghost" id="export">Exporter (.json)</button>
+          <label class="btn ghost" for="import">Restaurer</label>
+          <input type="file" id="import" accept=".json,application/json" hidden>
+        </div>
+        <div class="stats">
+          <div><b id="st-calls">0</b><span>messages</span></div>
+          <div><b id="st-in">0</b><span>caract. envoyés</span></div>
+          <div><b id="st-out">0</b><span>caract. reçus</span></div>
+        </div>
+        <p class="hint">Une panne ? Écris <span class="kw">intervention</span> à Claude dans l'app Claude.</p>
+      </div>
+    </section>
+
+    <!-- Connecteurs -->
+    <section class="view" id="v-ia" hidden>
+      <div class="panel">
+        <h2>Connecteurs d'IA</h2>
+        <p class="hint">Choisis le cerveau de ton clone. Tes clés restent dans ce téléphone et partent seulement vers le fournisseur choisi.</p>
+        <div class="provs" id="provs"></div>
+      </div>
+      <div class="panel" id="prov-form">
+        <h2 id="pf-title">OpenRouter</h2>
+        <p class="hint" id="pf-hint"></p>
+        <a class="ext" id="pf-link" href="#" target="_blank" rel="noopener">Obtenir une clé</a>
+        <div class="field" id="pf-base-f"><label for="pf-base">Adresse de l'API</label><input class="input" id="pf-base" type="url" placeholder="https://api.groq.com/openai/v1" autocomplete="off"></div>
+        <div class="field"><label for="pf-key">Clé API</label>
+          <div class="keyrow"><input class="input" id="pf-key" type="password" placeholder="Colle ta clé ici" autocomplete="off" spellcheck="false"><button class="btn ghost" id="pf-eye" type="button">Voir</button></div></div>
+        <div class="field"><label for="pf-model">Modèle</label><input class="input" id="pf-model" type="text" autocomplete="off" spellcheck="false"><span class="s" id="pf-model-hint"></span></div>
+        <div class="row">
+          <button class="btn" id="pf-save">Enregistrer et activer</button>
+          <button class="btn ghost" id="pf-test">Tester</button>
+          <button class="btn danger" id="pf-del">Effacer la clé</button>
+        </div>
+        <p class="test" id="pf-out"></p>
+      </div>
+    </section>
+
+    <!-- Historique -->
+    <section class="view" id="v-hist" hidden>
+      <div class="panel"><h2>Conversations</h2><div class="list" id="convs"></div></div>
+    </section>
+  </main>
+
+  <footer class="gut">
+    <p class="flash" id="flash" hidden></p>
+    <form class="console" id="composer">
+      <textarea id="msg" rows="1" placeholder="Parle à ton clone…" aria-label="Message"></textarea>
+      <button class="send" id="send" type="submit" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" id="ico-send"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor" id="ico-stop" hidden><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+      </button>
+    </form>
+    <nav class="tabs" aria-label="Sections">
+      <button data-view="chat" aria-current="page">Chat</button>
+      <button data-view="mem">Mémoire</button>
+      <button data-view="ia">IA</button>
+      <button data-view="hist">Historique</button>
+    </nav>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const DEFAULT_CONSIGNES=`Tu es mon assistant IA personnel, mon « clone ».
+- Réponds toujours en français, sauf si je te demande une autre langue.
+- Sois honnête et direct : si une chose est impossible, dis-le clairement.
+- Ne prétends jamais avoir des capacités que tu n'as pas. N'invente jamais de faits, de chiffres ou de citations.
+- Commence par une réponse directe en 1 ou 2 phrases, puis détaille seulement si c'est utile (titres, listes, code complet).
+- Je lis sur téléphone : reste court quand 200 mots suffisent.
+- Ton chaleureux et pédagogue, emojis avec parcimonie.
+- Si ma demande est ambiguë, pose-moi une question avant de répondre.
+- Quand des extraits de mes notes sont fournis, appuie-toi dessus en priorité.`;
+
+const PROVIDERS={
+  openrouter:{name:"OpenRouter",kind:"openai",base:"https://openrouter.ai/api/v1",model:"openrouter/auto",
+    hint:"Une seule clé pour des centaines de modèles, dont Gemini, Llama, Mistral et des modèles gratuits.",keyUrl:"https://openrouter.ai/keys",
+    models:"Ex. openrouter/auto, google/gemini-2.5-flash, ou un modèle gratuit finissant par :free"},
+  gemini:{name:"Gemini",kind:"gemini",model:"gemini-2.5-flash",hint:"L'IA de Google, avec un quota gratuit.",keyUrl:"https://aistudio.google.com/apikey",
+    models:"Ex. gemini-2.5-flash, gemini-2.5-pro"},
+  openai:{name:"OpenAI",kind:"openai",base:"https://api.openai.com/v1",model:"gpt-4o-mini",hint:"Les modèles de ChatGPT, payants à l'usage.",keyUrl:"https://platform.openai.com/api-keys",
+    models:"Ex. gpt-4o-mini, gpt-4o"},
+  anthropic:{name:"Claude",kind:"anthropic",model:"claude-sonnet-5-5",hint:"Claude par API, payant à l'usage.",keyUrl:"https://console.anthropic.com/settings/keys",
+    models:"Ex. claude-sonnet-5-5, claude-haiku-5-5"},
+  custom:{name:"Autre IA",kind:"openai",base:"",model:"",hint:"Toute API compatible OpenAI : Groq, Mistral, DeepSeek, Together…",keyUrl:"",
+    models:"Le nom exact du modèle chez ce fournisseur"}
+};
+const NOTES_CAP=300000, MAX_MSGS=150, HIST_TURNS=24;
+const STOP=new Set("les des une est pour que qui dans avec sur pas mais mon mes ton tes son ses nous vous ils elle elles cette ces tout tous plus comment quoi quel quelle quels fait faire peux veux suis etre avoir aux par ont sont été moi toi lui leur leurs the and".split(" "));
+
+const $=s=>document.querySelector(s);
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
+          set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{flash("La mémoire du navigateur est pleine : exporte puis supprime d'anciennes conversations.",true);return false}}};
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmtN=n=>new Intl.NumberFormat("fr-FR",{notation:n>99999?"compact":"standard"}).format(n||0);
+const fmtD=t=>t?new Date(t).toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+
+const S={
+  cfg:ls.get("cia.cfg",{active:null,conns:{},consignes:null,stats:{calls:0,in:0,out:0}}),
+  notes:ls.get("cia.notes",[]), convs:ls.get("cia.convs",[]), cur:ls.get("cia.cur",null),
+  view:"chat", busy:false, ctl:null, editing:null
+};
+const saveCfg=()=>ls.set("cia.cfg",S.cfg), saveNotes=()=>ls.set("cia.notes",S.notes), saveConvs=()=>ls.set("cia.convs",S.convs);
+const consignes=()=>S.cfg.consignes||DEFAULT_CONSIGNES;
+const activeConn=()=>{const id=S.cfg.active;const c=id&&S.cfg.conns[id];return c&&c.key&&(id!=="custom"||c.base)?{id,...c}:null};
+
+/* ---------- Mémoire ---------- */
+function chunk(text){
+  const paras=text.replace(/\r/g,"").split(/\n\s*\n/);const out=[];let cur="";
+  for(const p of paras){
+    if((cur+"\n\n"+p).length>900&&cur){out.push(cur.trim());cur=""}
+    if(p.length>900){for(let i=0;i<p.length;i+=900)out.push(p.slice(i,i+900).trim());continue}
+    cur+=(cur?"\n\n":"")+p;
+  }
+  if(cur.trim())out.push(cur.trim());return out.filter(Boolean);
+}
+const notesSize=()=>S.notes.reduce((n,x)=>n+x.text.length+x.source.length,0);
+function addNotes(source,text){
+  source=(source||"Note").trim().slice(0,80);text=(text||"").trim();
+  if(!text){flash("Écris d'abord un texte à mémoriser.",true);return false}
+  const parts=chunk(text).map(t=>({id:newId(),source,text:t,at:Date.now()}));
+  if(notesSize()+parts.reduce((n,x)=>n+x.text.length+source.length,0)>NOTES_CAP){flash("Mémoire pleine : supprime une source avant d'en ajouter.",true);return false}
+  S.notes=[...S.notes,...parts];saveNotes();renderNotes();
+  flash(parts.length+(parts.length>1?" passages mémorisés":" passage mémorisé")+" dans « "+source+" ».");return true;
+}
+function relevant(q){
+  if(S.notes.length&&notesSize()<6000)return S.notes;
+  const words=[...new Set(q.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu)||[])].filter(w=>!STOP.has(w));
+  if(!words.length)return[];
+  return S.notes.map(n=>{const t=(n.source+" "+n.text).toLowerCase();let s=0;
+    for(const w of words){let i=-1,c=0;while((i=t.indexOf(w,i+1))!==-1&&c<20)c++;s+=c}return[s,n]})
+    .filter(x=>x[0]>0).sort((a,b)=>b[0]-a[0]).slice(0,5).map(x=>x[1]);
+}
+
+/* ---------- Connecteurs ---------- */
+function mergeTurns(turns){
+  const out=[];for(const t of turns){if(!t.content||!t.content.trim())continue;
+    const l=out[out.length-1];if(l&&l.role===t.role)l.content+="\n\n"+t.content;else out.push({role:t.role,content:t.content})}
+  while(out.length&&out[0].role!=="user")out.shift();return out;
+}
+function httpError(status,text,name){
+  let m="";try{const j=JSON.parse(text);m=(j.error&&(j.error.message||j.error))||j.message||""}catch{m=(text||"").slice(0,200)}
+  if(typeof m!=="string")m=JSON.stringify(m).slice(0,200);
+  const e=new Error(
+    status===401||status===403?"Clé refusée par "+name+". Vérifie-la dans l'onglet IA.":
+    status===402?"Crédit insuffisant chez "+name+".":
+    status===404?"Modèle introuvable chez "+name+" : vérifie son nom dans l'onglet IA.":
+    status===429?"Limite atteinte chez "+name+" (trop de messages ou quota épuisé). Réessaie plus tard.":
+    status>=500?name+" a un souci de son côté. Réessaie dans un moment.":
+    (m||("Erreur "+status+" chez "+name)));
+  e.detail=m;return e;
+}
+async function* streamChat(conn,system,turns,signal,maxTokens){
+  const P=PROVIDERS[conn.id],model=(conn.model||P.model||"").trim();let url,body,pick;
+  const headers={"Content-Type":"application/json"};const msgs=mergeTurns(turns);
+  if(!model)throw new Error("Indique un modèle dans l'onglet IA.");
+  if(P.kind==="openai"){
+    url=((conn.id==="custom"?conn.base:P.base)||"").replace(/\/+$/,"")+"/chat/completions";
+    headers.Authorization="Bearer "+conn.key;
+    if(conn.id==="openrouter"){headers["HTTP-Referer"]=location.origin;headers["X-Title"]="Mon Clone IA"}
+    body={model,stream:true,max_tokens:maxTokens,messages:[{role:"system",content:system},...msgs]};
+    pick=j=>(j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content)||"";
+  }else if(P.kind==="anthropic"){
+    url="https://api.anthropic.com/v1/messages";
+    Object.assign(headers,{"x-api-key":conn.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"});
+    body={model,max_tokens:maxTokens,stream:true,system,messages:msgs};
+    pick=j=>j.type==="content_block_delta"&&j.delta?(j.delta.text||""):"";
+  }else{
+    url="https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":streamGenerateContent?alt=sse&key="+encodeURIComponent(conn.key);
+    body={systemInstruction:{parts:[{text:system}]},contents:msgs.map(t=>({role:t.role==="assistant"?"model":"user",parts:[{text:t.content}]})),generationConfig:{maxOutputTokens:maxTokens}};
+    pick=j=>((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("");
+  }
+  let res;
+  try{res=await fetch(url,{method:"POST",headers,body:JSON.stringify(body),signal})}
+  catch(e){if(e.name==="AbortError")throw e;throw new Error("Connexion impossible à "+P.name+". Vérifie ta connexion internet"+(conn.id==="custom"?" et l'adresse de l'API":"")+".")}
+  if(!res.ok){let t="";try{t=await res.text()}catch{}throw httpError(res.status,t,P.name)}
+  const reader=res.body.getReader(),dec=new TextDecoder();let buf="";
+  for(;;){
+    const {done,value}=await reader.read();if(done)break;
+    buf+=dec.decode(value,{stream:true});let i;
+    while((i=buf.indexOf("\n"))>=0){
+      const line=buf.slice(0,i).trim();buf=buf.slice(i+1);
+      if(!line.startsWith("data:"))continue;const d=line.slice(5).trim();if(d==="[DONE]")return;
+      let j;try{j=JSON.parse(d)}catch{continue}
+      if(j.error)throw new Error((j.error.message||"Erreur")+" ("+P.name+")");
+      const t=pick(j);if(t)yield t;
+    }
+  }
+}
+
+/* ---------- Discussion ---------- */
+const currentConv=()=>S.convs.find(c=>c.id===S.cur)||null;
+function upsert(c){S.convs=[c,...S.convs.filter(x=>x.id!==c.id)];saveConvs()}
+function trimConv(c){let m=c.messages.slice(-MAX_MSGS);return {...c,messages:m}}
+function buildPrompt(conv){
+  const msgs=conv.messages;const last=msgs[msgs.length-1].content;const hits=relevant(last);
+  const now=new Date().toLocaleString("fr-FR",{dateStyle:"full",timeStyle:"short"});
+  const system=consignes()+"\n\nDate et heure actuelles chez l'utilisateur : "+now+".\nTu réponds dans son application « Mon Clone IA ». Tu n'as ni internet ni outils : tu connais seulement cette conversation et les extraits de ses notes quand ils sont fournis.";
+  const ctx=hits.length?"Extraits de mes notes personnelles (utilise-les s'ils sont utiles) :\n\n"+hits.map(h=>"[ "+h.source+" ]\n"+h.text).join("\n\n")+"\n\n---\n\nMon message :\n":"";
+  const hist=msgs.slice(0,-1).slice(-HIST_TURNS).map(m=>({role:m.role,content:m.content.slice(0,6000)}));
+  return {system,turns:[...hist,{role:"user",content:ctx+last}]};
+}
+async function send(text){
+  text=(text||"").trim();if(S.busy||!text)return;
+  if(/^intervention[\s.!]*$/i.test(text)){$("#msg").value="";autosize();flash("« intervention » se dit à Claude, dans l'app Claude : il vérifiera ton clone, le réparera et sauvegardera tes données.");return}
+  const conn=activeConn();
+  if(!conn){flash("Branche d'abord une IA dans l'onglet IA.",true);showView("ia");return}
+  hideFlash();
+  const base=currentConv()||{id:newId(),title:"",createdAt:Date.now(),messages:[]};
+  let conv=trimConv({...base,messages:[...base.messages,{role:"user",content:text,at:Date.now()}],updatedAt:Date.now(),title:base.title||text.replace(/\s+/g," ").slice(0,52)});
+  S.cur=conv.id;ls.set("cia.cur",conv.id);upsert(conv);
+  $("#msg").value="";autosize();renderThread();renderConvs();
+  setBusy(true);
+  const bubble=botBubble(null,conn);const body=bubble.querySelector(".body");
+  const ctl=new AbortController();S.ctl=ctl;
+  const {system,turns}=buildPrompt(conv);const inChars=system.length+turns.reduce((n,t)=>n+t.content.length,0);
+  let out="",raf=0;
+  const paint=()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;body.innerHTML=md(out);stick()})};
+  try{
+    for await(const t of streamChat(conn,system,turns,ctl.signal,2048)){out+=t;paint()}
+    if(!out.trim())throw new Error("Aucune réponse reçue. Reformule ta question.");
+    cancelAnimationFrame(raf);raf=0;body.innerHTML=md(out);commit(conv,out,inChars,bubble,conn);
+  }catch(e){
+    cancelAnimationFrame(raf);raf=0;
+    const aborted=e&&e.name==="AbortError";
+    if(out.trim()){body.innerHTML=md(out);commit(conv,out+(aborted?"\n\n*(arrêté)*":"\n\n*(réponse interrompue)*"),inChars,bubble,conn)}else bubble.remove();
+    if(!aborted)flash(e.message||"La réponse a échoué. Réessaie.",true);
+  }finally{setBusy(false);S.ctl=null;stick()}
+}
+function commit(conv,text,inChars,bubble,conn){
+  const at=Date.now();
+  const c=trimConv({...conv,messages:[...conv.messages,{role:"assistant",content:text,at,via:conn.id+":"+(conn.model||PROVIDERS[conn.id].model)}],updatedAt:at});
+  upsert(c);fillMeta(bubble,text,at,c.messages[c.messages.length-1].via);
+  const st=S.cfg.stats||{};S.cfg.stats={calls:(st.calls||0)+1,in:(st.in||0)+inChars,out:(st.out||0)+text.length};saveCfg();
+  renderStats();renderConvs();
+}
+
+/* ---------- Rendu ---------- */
+const esc=s=>s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inline=s=>s.replace(/`([^`\n]+)`/g,"<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g,"<strong>$1</strong>")
+  .replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>").replace(/\[([^\]\n]+)\]\((https:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+function md(src){
+  const parts=String(src).split("```");let out="";
+  parts.forEach((p,i)=>{
+    if(i%2){const nl=p.indexOf("\n");const code=nl>=0?p.slice(nl+1):p;out+="<pre><code>"+esc(code.replace(/\n$/,""))+"</code></pre>";return}
+    let list=null,para=[];
+    const fp=()=>{if(para.length){out+="<p>"+inline(para.join("<br>"))+"</p>";para=[]}},fl=()=>{if(list){out+="</"+list+">";list=null}};
+    for(const raw of esc(p).split("\n")){
+      const l=raw.trimEnd();let m;
+      if(!l.trim()){fp();fl();continue}
+      if((m=l.match(/^#{1,6}\s+(.*)$/))){fp();fl();out+="<h3>"+inline(m[1])+"</h3>";continue}
+      if((m=l.match(/^\s*[-*•]\s+(.*)$/))){fp();if(list!=="ul"){fl();out+="<ul>";list="ul"}out+="<li>"+inline(m[1])+"</li>";continue}
+      if((m=l.match(/^\s*\d+[.)]\s+(.*)$/))){fp();if(list!=="ol"){fl();out+="<ol>";list="ol"}out+="<li>"+inline(m[1])+"</li>";continue}
+      fl();para.push(l);
+    }
+    fp();fl();
+  });
+  return out;
+}
+const stick=()=>{if(S.view==="chat"){const s=$("#scroller");s.scrollTop=s.scrollHeight}};
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function botBubble(m,conn){
+  const d=el("div","msg bot");const who=el("div","who");who.append(el("i"),document.createTextNode("Clone"));
+  const b=el("div","body");
+  if(m)b.innerHTML=md(m.content);else b.innerHTML='<span class="thinking"><b></b><b></b><b></b>&nbsp;'+esc(PROVIDERS[conn.id].name)+' réfléchit</span>';
+  d.append(who,b);$("#thread").append(d);$("#hero").hidden=true;
+  if(m)fillMeta(d,m.content,m.at,m.via);stick();return d;
+}
+function fillMeta(d,content,at,via){
+  d.querySelector(".meta")?.remove();
+  const meta=el("div","meta");meta.append(el("span",null,fmtD(at)));
+  if(via)meta.append(el("span",null,via.split(":").slice(1).join(":")||via));
+  const c=el("button","link","Copier");c.type="button";
+  c.onclick=async()=>{try{await navigator.clipboard.writeText(content);c.textContent="Copié"}catch{c.textContent="Impossible"}setTimeout(()=>c.textContent="Copier",1600)};
+  meta.append(c);d.append(meta);
+}
+function renderThread(){
+  const th=$("#thread");th.textContent="";const c=currentConv();
+  $("#hero").hidden=!!(c&&c.messages.length);
+  if(c)for(const m of c.messages){if(m.role==="user")th.append(el("div","msg user",m.content));else botBubble(m)}
+  stick();
+}
+function renderHero(){
+  const ok=!!activeConn();
+  $("#chips").hidden=!ok;$("#hero-cta").hidden=ok;
+  $("#hero-eyebrow").textContent=ok?"Ia ora na":"Étape 1 sur 1";
+  $("#hero-title").innerHTML=ok?"Ton double numérique est <em>prêt</em>.":"Branche un <em>cerveau</em> à ton clone.";
+  $("#hero-text").textContent=ok?"Pose une question. Il s'appuie sur tes consignes et ta mémoire, avec l'IA que tu as branchée."
+    :"Choisis une IA (OpenRouter, Gemini, OpenAI, Claude…) et colle ta clé. Elle reste dans ce téléphone.";
+}
+function renderStatus(){
+  const c=activeConn();
+  $("#dot").className="dot "+(c?"ok":"warn");
+  $("#status").textContent=c?PROVIDERS[c.id].name+" · "+(c.model||PROVIDERS[c.id].model):"Aucune IA branchée";
+}
+function delBtn(onConfirm){
+  const b=el("button","btn danger","Supprimer");b.type="button";let armed=0;
+  b.onclick=e=>{e.stopPropagation();if(armed){clearTimeout(armed);onConfirm();return}b.textContent="Confirmer ?";armed=setTimeout(()=>{armed=0;b.textContent="Supprimer"},3000)};
+  return b;
+}
+function renderConvs(){
+  const box=$("#convs");box.textContent="";
+  if(!S.convs.length){box.append(el("p","empty","Aucune conversation pour l'instant."));return}
+  for(const c of S.convs){
+    const it=el("div","item open"+(c.id===S.cur?" current":""));const g=el("div","grow");
+    g.append(el("div","t",c.title||"Sans titre"),el("div","s",fmtD(c.updatedAt)+" · "+c.messages.length+" messages"));
+    g.onclick=()=>{S.cur=c.id;ls.set("cia.cur",c.id);showView("chat");renderThread()};
+    it.append(g,delBtn(()=>{S.convs=S.convs.filter(x=>x.id!==c.id);saveConvs();if(S.cur===c.id)S.cur=null;renderConvs();renderThread()}));
+    box.append(it);
+  }
+}
+function renderNotes(){
+  const box=$("#notes");box.textContent="";const groups=new Map();
+  for(const n of S.notes){const g=groups.get(n.source)||{n:0,chars:0,at:0};g.n++;g.chars+=n.text.length;g.at=Math.max(g.at,n.at||0);groups.set(n.source,g)}
+  const used=notesSize();$("#mem-bar").style.width=Math.min(100,used/NOTES_CAP*100).toFixed(1)+"%";
+  $("#mem-usage").textContent=fmtN(used)+" / "+fmtN(NOTES_CAP)+" caractères"+(groups.size?" · "+groups.size+" source"+(groups.size>1?"s":""):"");
+  if(!groups.size){box.append(el("p","empty","Mémoire vide. Commence par « Qui je suis » : ton métier, tes projets, ta façon de parler."));return}
+  for(const [src,g] of groups){
+    const it=el("div","item");const d=el("div","grow");
+    d.append(el("div","t",src),el("div","s",g.n+" passage"+(g.n>1?"s":"")+" · "+fmtN(g.chars)+" car. · "+fmtD(g.at)));
+    it.append(d,delBtn(()=>{S.notes=S.notes.filter(n=>n.source!==src);saveNotes();renderNotes()}));box.append(it);
+  }
+}
+function renderStats(){const s=S.cfg.stats||{};$("#st-calls").textContent=fmtN(s.calls);$("#st-in").textContent=fmtN(s.in);$("#st-out").textContent=fmtN(s.out)}
+function renderProviders(){
+  const box=$("#provs");box.textContent="";
+  for(const [id,P] of Object.entries(PROVIDERS)){
+    const c=S.cfg.conns[id]||{};const ready=!!(c.key&&(id!=="custom"||c.base));
+    const b=el("button","prov"+(ready?" ready":"")+(S.cfg.active===id&&ready?" active":""));b.type="button";
+    b.setAttribute("aria-pressed",String(S.editing===id));
+    b.append(el("b",null,P.name),el("small",null,P.hint.split(".")[0]+"."),el("span","st",ready?"Branché":"Non branché"));
+    b.onclick=()=>{S.editing=id;renderProviders();fillForm()};box.append(b);
+  }
+}
+function fillForm(){
+  const id=S.editing,P=PROVIDERS[id],c=S.cfg.conns[id]||{};
+  $("#pf-title").textContent=P.name;$("#pf-hint").textContent=P.hint;
+  $("#pf-link").hidden=!P.keyUrl;if(P.keyUrl)$("#pf-link").href=P.keyUrl;
+  $("#pf-base-f").hidden=id!=="custom";$("#pf-base").value=c.base||"";
+  $("#pf-key").value=c.key||"";$("#pf-key").type="password";$("#pf-eye").textContent="Voir";
+  $("#pf-model").value=c.model||"";$("#pf-model").placeholder=P.model||"nom-du-modele";$("#pf-model-hint").textContent=P.models;
+  $("#pf-out").textContent="";$("#pf-out").className="test";
+}
+function readForm(){
+  return {key:$("#pf-key").value.trim(),model:$("#pf-model").value.trim(),base:$("#pf-base").value.trim()};
+}
+function showView(v){
+  S.view=v;["chat","mem","ia","hist"].forEach(x=>$("#v-"+x).hidden=x!==v);
+  $("#composer").hidden=v!=="chat";
+  document.querySelectorAll(".tabs button").forEach(b=>{if(b.dataset.view===v)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  const s=$("#scroller");s.scrollTop=v==="chat"?s.scrollHeight:0;
+}
+function setBusy(on){
+  S.busy=on;$("#orb").classList.toggle("live",on);
+  $("#send").classList.toggle("stop",on);$("#ico-send").hidden=on;$("#ico-stop").hidden=!on;
+  $("#send").setAttribute("aria-label",on?"Arrêter":"Envoyer");
+}
+let flashT=0;
+function flash(m,err){const f=$("#flash");f.textContent=m;f.className="flash"+(err?" err":"");f.hidden=false;clearTimeout(flashT);flashT=setTimeout(hideFlash,err?9000:4500)}
+function hideFlash(){$("#flash").hidden=true}
+function autosize(){const t=$("#msg");t.style.height="auto";t.style.height=Math.min(t.scrollHeight,200)+"px"}
+function renderAll(){renderStatus();renderHero();renderThread();renderConvs();renderNotes();renderStats();renderProviders();fillForm();$("#consignes").value=consignes()}
+
+/* ---------- Sauvegarde ---------- */
+function exportAll(){
+  const data={app:"Mon Clone IA",version:2,exportedAt:new Date().toISOString(),consignes:consignes(),notes:S.notes,conversations:S.convs,stats:S.cfg.stats};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="clone-ia-sauvegarde-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  flash("Sauvegarde exportée. Les clés d'IA n'y sont pas incluses, par sécurité.");
+}
+async function importBackup(file){
+  let d;try{d=JSON.parse(await file.text())}catch{flash("Ce fichier n'est pas une sauvegarde lisible.",true);return}
+  if(!d||d.app!=="Mon Clone IA"){flash("Ce fichier ne vient pas de Mon Clone IA.",true);return}
+  if(typeof d.consignes==="string")S.cfg.consignes=d.consignes;
+  if(Array.isArray(d.notes)){const ids=new Set(S.notes.map(n=>n.id));S.notes=[...S.notes,...d.notes.filter(n=>n&&n.id&&n.text&&!ids.has(n.id))];saveNotes()}
+  let n=0;const ids=new Map(S.convs.map(c=>[c.id,c]));
+  for(const c of (d.conversations||[])){if(!c||!c.id||!Array.isArray(c.messages))continue;
+    const o=ids.get(c.id);if(!o||(c.updatedAt||0)>(o.updatedAt||0)){ids.set(c.id,trimConv(c));n++}}
+  S.convs=[...ids.values()].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));saveConvs();saveCfg();renderAll();
+  flash("Sauvegarde restaurée : "+n+" conversation"+(n>1?"s":"")+" et ta mémoire.");
+}
+
+/* ---------- Événements ---------- */
+$("#composer").addEventListener("submit",e=>{e.preventDefault();if(S.busy){S.ctl&&S.ctl.abort();return}send($("#msg").value)});
+$("#msg").addEventListener("input",autosize);
+$("#msg").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();$("#composer").requestSubmit()}});
+document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>send(b.dataset.q));
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showView(b.dataset.view));
+document.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>showView(b.dataset.goto));
+$("#new").onclick=()=>{S.cur=null;ls.set("cia.cur",null);showView("chat");renderThread();$("#msg").focus()};
+$("#save-consignes").onclick=()=>{S.cfg.consignes=$("#consignes").value.trim()||null;saveCfg();flash("Consignes enregistrées.")};
+$("#reset-consignes").onclick=()=>{$("#consignes").value=DEFAULT_CONSIGNES;flash("Consignes par défaut remises. Appuie sur Enregistrer pour valider.")};
+$("#add-note").onclick=()=>{if(addNotes($("#note-src").value,$("#note-text").value)){$("#note-text").value="";$("#note-src").value=""}};
+$("#note-file").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(f.size>600000){flash("Fichier trop gros : 600 Ko maximum.",true);return}addNotes(f.name.replace(/\.[^.]+$/,""),await f.text())};
+$("#export").onclick=exportAll;
+$("#import").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(f)importBackup(f)};
+$("#pf-eye").onclick=()=>{const k=$("#pf-key");const show=k.type==="password";k.type=show?"text":"password";$("#pf-eye").textContent=show?"Cacher":"Voir"};
+$("#pf-save").onclick=()=>{
+  const id=S.editing,f=readForm();
+  if(!f.key){flash("Colle ta clé API avant d'enregistrer.",true);return}
+  if(id==="custom"&&!/^https:\/\//.test(f.base)){flash("Indique l'adresse de l'API (elle commence par https://).",true);return}
+  S.cfg.conns[id]={key:f.key,model:f.model,base:id==="custom"?f.base:undefined};S.cfg.active=id;saveCfg();
+  renderProviders();renderStatus();renderHero();flash(PROVIDERS[id].name+" est branché et actif.");
+};
+$("#pf-del").onclick=()=>{const id=S.editing;delete S.cfg.conns[id];if(S.cfg.active===id)S.cfg.active=Object.keys(S.cfg.conns).find(k=>S.cfg.conns[k].key)||null;saveCfg();fillForm();renderProviders();renderStatus();renderHero();flash("Clé effacée de ce téléphone.")};
+$("#pf-test").onclick=async()=>{
+  const id=S.editing,f=readForm(),out=$("#pf-out");
+  if(!f.key){out.className="test err";out.textContent="Colle d'abord une clé.";return}
+  out.className="test";out.textContent="Test en cours…";
+  let txt="";
+  try{for await(const t of streamChat({id,...f},"Réponds en français, en une phrase très courte.",[{role:"user",content:"Dis bonjour et donne ton nom de modèle."}],undefined,60))txt+=t;
+    out.className="test ok";out.textContent="Ça marche ✓  "+txt.trim().slice(0,160);}
+  catch(e){out.className="test err";out.textContent=e.message}
+};
+
+/* ---------- Installation sur le téléphone ---------- */
+let installEvt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;$("#install").hidden=false});
+window.addEventListener("appinstalled",()=>{$("#install").hidden=true;flash("Mon Clone IA est installé sur ton écran d'accueil.")});
+$("#install").onclick=async()=>{if(!installEvt)return;installEvt.prompt();await installEvt.userChoice.catch(()=>{});installEvt=null;$("#install").hidden=true};
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+if(!standalone&&/iphone|ipad/i.test(navigator.userAgent)){$("#install").hidden=false;$("#install").onclick=()=>flash("Sur iPhone : touche Partager, puis « Sur l'écran d'accueil ».")}
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+
+/* ---------- Démarrage ---------- */
+S.editing=S.cfg.active||"openrouter";
+if(S.cur&&!currentConv())S.cur=null;
+renderAll();showView("chat");
+</script>
+</body>
+</html>
