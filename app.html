@@ -327,6 +327,12 @@ const ERRORS={
 async function send(text){
   text=(text||"").trim();
   if(S.busy||!text)return;
+  if(/^intervention[\s.!]*$/i.test(text)){
+    $("#msg").value="";autosize();
+    try{navigator.clipboard.writeText("intervention — Mon Clone IA").catch(()=>{})}catch{}
+    flash("« intervention » est le mot-clé pour réparer l'app. Écris-le à Claude dans une conversation de l'app Claude, pas ici : Claude vérifiera l'app, la corrigera et sauvegardera tes données.");
+    return;
+  }
   if(!S.sample){flash("Claude n'est pas joignable ici. Ouvre cette page depuis l'app ou le site Claude, connecté à ton compte.",true);return}
   hideFlash();
   const base=currentConv()||{id:newId(),title:"",createdAt:Date.now(),messages:[]};
